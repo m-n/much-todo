@@ -11,42 +11,55 @@ Example
 
     ;(in-package much-todo) 
     (todo)
-    
     First task
       Subtask of first task
     Second Task
     Third Task
+    #<TODO "First task" {1008EF5823}>
     ;(in-package much-todo) 
-    (todo "subtask of third" "third")
-    
+    (todo "zeroth task")
+    zeroth task
     First task
       Subtask of first task
     Second Task
     Third Task
-      subtask of third
+    #<TODO "zeroth task" {1009037E03}>
+    ;(in-package much-todo) 
+    (todo "Subtask of third" "third")
+    zeroth task
+    First task
+      Subtask of first task
+    Second Task
+    Third Task
+      Subtask of third
+    #<TODO "zeroth task" {10090A3E13}>
     ;(in-package much-todo) 
     (focus "third")
-    "subtask of third"
+    "Subtask of third"
     ;(in-package much-todo) subtask of third
     (todo)
-    
     Third Task
-      subtask of third
+      Subtask of third
+    zeroth task
     First task
       Subtask of first task
     Second Task
+    #<TODO "Third Task" {10091FE663}>
     ;(in-package much-todo) subtask of third
     (finish)
     Finished:
-    subtask of third
+    Subtask of third
     NIL
     ;(in-package much-todo) 
     (todo)
-    
     Third Task
+    zeroth task
     First task
       Subtask of first task
     Second Task
+    gendl_ joined #lisp
+    gendl_ joined #quicklisp
+    #<TODO "Third Task" {10092C9BE3}>
     ;(in-package much-todo) 
     
 Interface
@@ -71,6 +84,12 @@ recent task.
 
 *todo-pathname* > variable  
  Path of the file to persist the todo.
+
+Representation of the todo file
+-------------------------------
+
+Each line of the todo file represents one task. If a line is indented by two
+spaces more than the previous line, it is a subtask of the previous line.
 
 slime-repl integration
 ----------------------

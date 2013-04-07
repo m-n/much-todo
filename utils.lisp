@@ -22,6 +22,10 @@
 	 (unless ,serialize-win
 	   (error "with-file-datastructure failed to write to ~A" ,gpathname))))))
 
+(defmacro prog1-let ((var val) &body body)
+  `(let ((,var ,val))
+     (prog1 ,var ,@body)))
+
 (defmacro defclass-autoargs (name superclasses slots &rest options)
   "Produces accessors and initargs named for the slot name, unless
 :accesssor, :reader, or :writer is included in the slot (for :accessor)
@@ -41,9 +45,3 @@ Slots can be symbols or lists including further args."
 			    args))
      ,@options))
 
-(defun closer (char)
-  (ecase char
-    (#\( #\))
-    (#\{ #\})
-    (#\[ #\])
-    (#\< #\>)))

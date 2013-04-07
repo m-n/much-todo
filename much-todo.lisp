@@ -31,6 +31,7 @@
 	   (setf todo (make-instance 'todo :task new-todo :next todo)))
 	  (t
 	   nil))
+    (display-todo todo)
     todo))
 
 
@@ -61,12 +62,14 @@ recent task."
     (let ((top todo)
 	  (next (next-todo todo)))
       (if (subtask todo)
-	  (progn
-	    (setf (subtask todo) (next-todo next))
-	    (format t "~&Finished:~&~A" (task next)))
+	  (do ((subtask (subtask todo) (subtask subtask))
+	       (previous todo subtask))
+	      ((not (subtask subtask))
+	       (setf (subtask previous) (next next))
+	       (format t "~&Finished:~&~A" (task next))))
 	  (progn 
-	    (setf todo next
-		  (next top) nil)
+	    (setf todo (next todo)
+		  (next todo) nil)
 	    (format t "~&Finished:~&~A" top))))))
 
 (defun nmove-to-front (string todo)
@@ -134,29 +137,53 @@ recent task."
 
 (defun todo-reader (stream char &optional count)
   (declare (ignore count))
-  (destructuring-bind (task &optional subtask next)
-      (read-delimited-list (closer char)  stream t)
-    (make-instance 'todo :task task :subtask subtask :next next)))
+  (flet ((indentation (line)
+	   (loop for c across line
+		 while (char= #\Space c)
+		 count c))
+	 (next-line ()
+	   (read-line stream nil "" nil)))
+    (let* ((top (make-instance 'todo :task (concatenate 'string
+							(string char)
+							(next-line))))
+	   (stack (list top)))
+      (do* ((line (next-line) (next-line))
+	    (previous-indentation 0 indentation)
+	    (indentation (indentation line)
+			 (indentation line))
+	    (task (subseq line indentation)
+		  (subseq line indentation)))
+	   ((string= "" line) top)
+	(let ((new (make-instance 'todo :task task)))
+	  (cond ((<= indentation previous-indentation)
+		 (loop repeat (- (length stack) (/ indentation 2) 1)
+		       do (pop stack))
+		 (setf (next (car stack)) new
+		       (car stack)  new))
+		((> indentation previous-indentation)
+		 (assert (= (- indentation previous-indentation) 2)
+			 () "Malformed todo")
+		 (setf (subtask (car stack)) new)
+		 (push new stack))))))))
 
-(defvar *todo-readtable* (copy-readtable nil))
+(defvar *todo-readtable*
+  (prog1-let (rt (copy-readtable nil))
+    (dotimes (i char-code-limit)
+      (set-macro-character (code-char i) 'todo-reader () rt))))
 
 (defmethod print-object ((o todo) s)
-  (cond (*print-readably*
-	 (with-slots (task subtask next) o
-	   (format s "{~{ ~w~^  ~%~}}"
-		   (concatenate 'list
-				(list task)
-				(when (or next subtask)
-				  (list subtask))
-				(ensure-list next)))))
-	(t
-	 (display-todo o :stream s))))
+  (if *print-readably*
+      (display-todo o :stream s)
+      (print-unreadable-object (o s :type t :identity t)
+	(if (> (length (task o)) 11)
+	    (format s "~S..." (subseq (task o) 0 8))
+	    (format s "~S" (task o))))))
 
 (defun display-todo (todo &key (stream *standard-output*) (depth 0))
   (with-slots (task subtask next) todo
-    (terpri stream)
     (loop repeat depth do (format stream " "))
     (format stream "~A" task)
+    (terpri stream)
     (finish-output stream)
     (when subtask
       (display-todo subtask :stream stream :depth (+ 2 depth)))
@@ -164,7 +191,3 @@ recent task."
     (when next
       (display-todo next :stream stream :depth depth))))
 
-(set-macro-character #\{ 'todo-reader () *todo-readtable*)
-(set-macro-character #\( 'todo-reader () *todo-readtable*)
-(set-macro-character #\} (get-macro-character #\) ()) () *todo-readtable*)
-(set-syntax-from-char #\} #\) *todo-readtable* ())
