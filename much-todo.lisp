@@ -168,7 +168,8 @@ recent task."
 
 (defvar *todo-readtable*
   (prog1-let (rt (copy-readtable nil))
-    (dotimes (i char-code-limit)
+    (dotimes (i ;char-code-limit ;; causes error in ccl
+	      256)
       (set-macro-character (code-char i) 'todo-reader () rt))))
 
 (defmethod print-object ((o todo) s)
