@@ -1,8 +1,9 @@
 ;;;; much-todo.lisp
-;;; This file operates on a single todo file, todo.obj, located within
-;;; the project's directory. The file is a textual representation of
+;;; This file operates on a single todo file, defaulted to todo.obj, located
+;;; within the project's directory. The file is a textual representation of
 ;;; our todo items. We implement convenient ways to view the file,
-;;; and add and remove items from the file, from the repl.
+;;; and add and remove items from the file, from the repl. The path to your
+;;; todo file is configurable with *todo-pathname*
 
 ;;;; preamble
 
@@ -17,16 +18,18 @@
 ;;;; Interface
 
 (defun todo (&optional new-todo task)
-  "Return the todo from *todo-pathname*, add the new-todo if present to the file."
+  "Return todo from *todo-pathname*, if new-todo given add to the file."
   (with-todo todo
     (cond ((and new-todo task)
-	   (multiple-value-bind (at prev subtaskp) (locate task todo)
-	     (declare (ignorable prev subtaskp))
-	     (setf (subtask at) (apply 'make-instance 'todo
-				       :task new-todo
-				       (when (subtask at)
-					 (list
-					  :next (subtask at)))))))
+	   (destructuring-bind (at prev first) (car (locate task todo))
+	     (declare (ignorable prev first))
+	     (if at
+		 (setf (subtask at) (apply 'make-instance 'todo
+					   :task new-todo
+					   (when (subtask at)
+					     (list
+					      :next (subtask at)))))
+		 (format t "~&Task not found -- todo not added.~&"))))
 	  (new-todo
 	   (setf todo (make-instance 'todo :task new-todo :next todo)))
 	  (t
@@ -60,30 +63,31 @@ recent task."
   "Remove the first todo from the list."
   (with-todo todo
     (let ((top todo)
-	  (next (next-todo todo)))
+	  (next (first-todo todo)))
       (if (subtask todo)
 	  (do ((subtask (subtask todo) (subtask subtask))
 	       (previous todo subtask))
 	      ((not (subtask subtask))
 	       (setf (subtask previous) (next next))
 	       (format t "~&Finished:~&~A" (task next))))
-	  (progn 
-	    (setf todo (next todo)
-		  (next todo) nil)
-	    (format t "~&Finished:~&~A" top))))))
+	  (progn
+	    (setf todo (next todo))
+	    (format t "~&Finished:~&~A" (task top)))))))
 
 (defun nmove-to-front (string todo)
   "If string is a prefix for the task of a todo, move it to the front of todo."
   (when (task-prefix-p string todo)
     (return-from nmove-to-front todo))
-  (do ((looking (next todo) (next looking))
-       (prev todo looking))
-      ((and looking
-	    (task-prefix-p string looking))
-       (prog1 looking
-	 (setf (next prev) (next looking)
-	       (next looking) todo)))
-    (unless looking (return-from nmove-to-front nil))))
+  (let ((stack (locate string todo)))
+    (unless stack (return-from nmove-to-front nil))
+    (mapl (lambda (more)
+	    (destructuring-bind (looking prev first) (car more)
+	      (when prev
+		(setf (next prev) (next looking)
+		      (next looking) first))
+	      (unless (cdr more) (return-from nmove-to-front looking))
+	      (setf (subtask (first (cadr more))) looking)))
+	  stack)))
 
 (defun task-prefix-p (prefix target)
   (let ((task (task target)))
@@ -97,30 +101,26 @@ recent task."
   (cond ((not (subtask todo))
 	 (task todo))
 	(t
-	 (when-let ((next (next-todo todo)))
+	 (when-let ((next (first-todo todo)))
 	   (task next)))))
 
-(defun next-todo (todo)
-  (when (typep todo 'todo)
-    (if (subtask todo)
-	(do ()
-	    ((not (subtask todo)) todo)
-	  (setq todo (subtask todo)))
-	(next todo))))
+(defun first-todo (todo)
+  (assert (typep todo 'todo))
+  (do ()
+      ((not (subtask todo)) todo)
+    (setq todo (subtask todo))))
 
-(defun locate (str todo)
-  (labels ((dfs (node prev)
-	     (when (task-prefix-p str node)    
-	       (return-from locate (values node prev)))
-	     (when-let ((subtask (subtask node)))
-	       (multiple-value-bind (node prev) (dfs subtask node)
-		 (when node
-		   (return-from locate (values node prev)))))
-	     (when-let ((next (next node)))
-	       (multiple-value-bind (node prev) (dfs next node)
-		 (when node
-		   (return-from locate (values node prev)))))))
-    (dfs todo nil)))
+(defun locate (string todo)
+  (labels ((dfs (stack)
+	     (destructuring-bind (node prev first) (car stack)
+	       (declare (ignorable prev))
+	       (when (task-prefix-p string node)
+		 (return-from locate stack))
+	       (when-let ((subtask (subtask node)))
+		 (dfs (cons (list subtask nil subtask) stack)))
+	       (when-let ((next (next node)))
+		 (dfs (cons (list next node first) (cdr stack)))))))
+    (dfs (cons (list todo nil todo) nil))))
 
 (defvar *todo-pathname* (merge-pathnames
 			 (make-pathname :name "todo" :type "obj")
