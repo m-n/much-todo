@@ -1,10 +1,14 @@
 much-todo
 =========
 
-A todo list for the cl repl
+A todo list for the cl repl.
+
+Warning: alpha quality. There may still be some situations where this
+deletes your todo file without warning.
 
 This package creates and manages a simple todo list, transparently backed by
-a file, designed for use at the slime repl.
+a file, designed for use at the slime repl. It is tested in SBCL but purports
+to be written in portable Common Lisp.
 
 Example
 -------
