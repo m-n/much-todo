@@ -13,54 +13,68 @@ to be written in portable Common Lisp.
 Example
 -------
 
+    ; SLIME 2013-03-12
     ;(in-package much-todo) 
     (todo)
+
     First task
       Subtask of first task
     Second Task
     Third Task
+
     #<TODO "First task" {1008EF5823}>
     ;(in-package much-todo) 
     (todo "zeroth task")
+
     zeroth task
     First task
       Subtask of first task
     Second Task
     Third Task
+
     #<TODO "zeroth task" {1009037E03}>
     ;(in-package much-todo) 
     (todo "Subtask of third" "third")
+
     zeroth task
     First task
       Subtask of first task
     Second Task
     Third Task
       Subtask of third
+
     #<TODO "zeroth task" {10090A3E13}>
     ;(in-package much-todo) 
     (focus "third")
+
     "Subtask of third"
     ;(in-package much-todo) subtask of third
     (todo)
+
     Third Task
       Subtask of third
     zeroth task
     First task
       Subtask of first task
     Second Task
+
     #<TODO "Third Task" {10091FE663}>
     ;(in-package much-todo) subtask of third
     (finish)
+
     Finished:
     Subtask of third
+
     NIL
     ;(in-package much-todo) 
     (todo)
+
     Third Task
     zeroth task
     First task
       Subtask of first task
     Second Task
+
     #<TODO "Third Task" {10092C9BE3}>
     ;(in-package much-todo) 
     
