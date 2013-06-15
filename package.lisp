@@ -9,5 +9,8 @@
    #:finish
    #:*todo-pathname*
    #:*todoing*
-   ))
+   #:*todos*
+   #:select-todo-list
+   #:remove-todo-list
+   #:add-todo-list))
 

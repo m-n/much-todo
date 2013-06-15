@@ -1,24 +1,76 @@
 ;;;; much-todo.lisp
-;;; This file operates on a single todo file, defaulted to todo.obj, located
-;;; within the project's directory. The file is a textual representation of
-;;; our todo items. We implement convenient ways to view the file,
-;;; and add and remove items from the file, from the repl. The path to your
-;;; todo file is configurable with *todo-pathname*
 
 ;;;; preamble
 
 (in-package #:much-todo)
 
+(defvar *todos*
+  (list (merge-pathnames
+	 (make-pathname :name "test" :type "todo")
+	 #-asdf
+	 (or *compile-file-truename*
+	       *load-truename*
+	       *default-pathname-defaults*)
+	 #+asdf
+	 (asdf:system-source-directory "much-todo")))
+  "List of pathnames of todo files.")
+
+(defvar *todo-pathname* (first *todos*)
+  "Path of the file to persist the current todo list.")
+
+(defvar *todoing* ()
+  "The task in progress")
+
+(defun todo-reader (stream &optional char count)
+  (declare (ignore count))
+  (flet ((indentation (line)
+	   (loop for c across line
+		 while (char= #\Space c)
+		 count c))
+	 (next-line ()
+	   (read-line stream nil "" nil)))
+    (let* ((top (make-instance 'todo :task (if char
+					       (concatenate 'string
+							    (string char)
+							    (next-line))
+					       (next-line))))
+	   (stack (list top)))
+      (do* ((line (next-line) (next-line))
+	    (previous-indentation 0 indentation)
+	    (indentation (indentation line)
+			 (indentation line))
+	    (task (subseq line indentation)
+		  (subseq line indentation)))
+	   ((string= "" line) top)
+	(let ((new (make-instance 'todo :task task)))
+	  (cond ((<= indentation previous-indentation)
+		 (loop repeat (- (length stack) (/ indentation 2) 1)
+		       do (pop stack))
+		 (setf (next (car stack)) new
+		       (car stack)  new))
+		((> indentation previous-indentation)
+		 (assert (= (- indentation previous-indentation) 2)
+			 () "Malformed todo")
+		 (setf (subtask (car stack)) new)
+		 (push new stack))))))))
+
 (defmacro with-todo (var &body body)
-  `(with-standard-io-syntax
-     (let ((*print-readably* t))
-       (with-file-datastructure (,var *todo-pathname* :readtable *todo-readtable*)
-	 ,@body))))
+  `(if *todo-pathname*
+       (with-standard-io-syntax
+	 (let ((*print-readably* t))
+	   (with-file-datastructure (,var *todo-pathname* :read-function 'todo-reader)
+	     ,@body)))
+       (format t "No todo file selected.")))
+
+(defclass-autoargs todo ()
+  ((task :initform nil)
+   (subtask :initform nil)
+   (next :initform nil)))
 
 ;;;; Interface
 
 (defun todo (&optional new-todo task)
-  "Return todo from *todo-pathname*, if new-todo given add to the file."
+  "Display and return todo from *todo-pathname*, if new-todo given add to the file."
   (with-todo todo
     (cond ((and new-todo task)
 	   (destructuring-bind (at prev first) (car (locate task todo))
@@ -33,7 +85,9 @@
 	  (new-todo
 	   (setf todo (make-instance 'todo :task new-todo :next todo)))
 	  (t
-	   nil))
+	   nil)))
+  (when *todoing* (focus *todoing*))
+  (with-todo todo
     (display-todo todo)
     todo))
 
@@ -51,11 +105,50 @@
   (setq *todoing* nil))
 
 (defun finish ()
-  "Clear *todoing*, remove the most recent task.
-Fixme: doesn't insure that the task named in *todoing* is still the most 
-recent task."
+  "Remove current task from the todo list, clear *todoing*."
   (pop-todo)
   (setq *todoing* nil))
+
+(defun add-todo-list (pathname)
+  "Add todo list to the todos displayed by select-todo-list."
+  (appendf *todos* (ensure-list pathname)))
+
+(defun select-todo-list (&optional number)
+  "User-interactive choice between identified todo files."
+  (unless *todos* 
+    (princ "No pathnames in *todos*.") 
+    (return-from select-todo-list))
+  (when (not number)
+    (format t "~&Choose a todo list:~&")
+    (idolist (i todo *todos*)
+      (format t "~&~A. ~A~&" (1+ i) (pathname-name todo)))
+    (force-output)
+    (setq number (read)))
+  (decf number) ; todos indexed from 1
+  (if-let (path (nth number *todos*))
+    (progn (setq *todo-pathname* path) (todo))
+    (error "Option not found.")))
+
+(defun remove-todo-list (&optional number-or-all)
+  "Remove todo list from todos displayed by select-todo-list."
+  (unless number-or-all
+    (format t "~&Choose a todo to remove:~&")
+    (idolist (i todo *todos*) 
+      (format t "~&~A. ~A~&" (1+ i) (pathname-name todo)))
+    (force-output)
+    (setq number-or-all (read)))
+  (cond ((numberp number-or-all)
+	 (decf number-or-all)
+	 (assert (and (integerp number-or-all) (< -1 number-or-all (length *todos*)))
+		 (number-or-all) "Not one of the integer options presented.")
+	 (when (equalp *todo-pathname* (nth number-or-all *todos*))
+	   (setq *todo-pathname* nil
+		 *todoing* nil))
+	 (setq *todos* (append (subseq *todos* 0 number-or-all)
+			       (subseq *todos* (1+ number-or-all)))))
+	(t (setq *todos* nil
+		 *todo-pathname* nil
+		 *todoing* nil))))
 
 ;;;; Support
 
@@ -121,56 +214,6 @@ recent task."
 	       (when-let ((next (next node)))
 		 (dfs (cons (list next node first) (cdr stack)))))))
     (dfs (cons (list todo nil todo) nil))))
-
-(defvar *todo-pathname* (merge-pathnames
-			 (make-pathname :name "todo" :type "obj")
-			 #.(or *compile-file-truename* *load-truename*))
-  "Path of the file to persist the todo.")
-
-(defvar *todoing* ()
-  "The task in progress")
-
-(defclass-autoargs todo ()
-  ((task :initform nil)
-   (subtask :initform nil)
-   (next :initform nil)))
-
-(defun todo-reader (stream char &optional count)
-  (declare (ignore count))
-  (flet ((indentation (line)
-	   (loop for c across line
-		 while (char= #\Space c)
-		 count c))
-	 (next-line ()
-	   (read-line stream nil "" nil)))
-    (let* ((top (make-instance 'todo :task (concatenate 'string
-							(string char)
-							(next-line))))
-	   (stack (list top)))
-      (do* ((line (next-line) (next-line))
-	    (previous-indentation 0 indentation)
-	    (indentation (indentation line)
-			 (indentation line))
-	    (task (subseq line indentation)
-		  (subseq line indentation)))
-	   ((string= "" line) top)
-	(let ((new (make-instance 'todo :task task)))
-	  (cond ((<= indentation previous-indentation)
-		 (loop repeat (- (length stack) (/ indentation 2) 1)
-		       do (pop stack))
-		 (setf (next (car stack)) new
-		       (car stack)  new))
-		((> indentation previous-indentation)
-		 (assert (= (- indentation previous-indentation) 2)
-			 () "Malformed todo")
-		 (setf (subtask (car stack)) new)
-		 (push new stack))))))))
-
-(defvar *todo-readtable*
-  (prog1-let (rt (copy-readtable nil))
-    (dotimes (i ;char-code-limit ;; causes error in ccl
-	      256)
-      (set-macro-character (code-char i) 'todo-reader () rt))))
 
 (defmethod print-object ((o todo) s)
   (if *print-readably*

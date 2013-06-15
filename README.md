@@ -3,15 +3,14 @@ much-todo
 
 A todo list for the cl repl.
 
-Warning: alpha quality. There may still be some situations where this
-deletes your todo file without warning.
-
-This package creates and manages a simple todo list, transparently backed by
-a file, designed for use at the slime repl. It is tested in SBCL but purports
+This package creates and manages simple todo lists backed by files,
+ designed for use at the slime repl. It is tested in SBCL but purports
 to be written in portable Common Lisp.
 
 Example
 -------
+
+_Display_ the current todo
 
     ; SLIME 2013-03-12
     ;(in-package much-todo) 
@@ -23,6 +22,9 @@ Example
     Third Task
 
     #<TODO "First task" {1008EF5823}>
+
+_Add_ a task
+    
     ;(in-package much-todo) 
     (todo "zeroth task")
 
@@ -32,7 +34,7 @@ Example
     Second Task
     Third Task
 
-    #<TODO "zeroth task" {1009037E03}>
+    #<TODO "zeroth task" {1009037E03}>    
     ;(in-package much-todo) 
     (todo "Subtask of third" "third")
 
@@ -44,6 +46,9 @@ Example
       Subtask of third
 
     #<TODO "zeroth task" {10090A3E13}>
+
+_Focus on (select)_ a task
+    
     ;(in-package much-todo) 
     (focus "third")
 
@@ -59,6 +64,9 @@ Example
     Second Task
 
     #<TODO "Third Task" {10091FE663}>
+
+_Finish (remove)_ a task
+
     ;(in-package much-todo) subtask of third
     (finish)
 
@@ -78,29 +86,71 @@ Example
     #<TODO "Third Task" {10092C9BE3}>
     ;(in-package much-todo) 
     
+_Add_ a todo list
+
+    ;(in-package much-todo) 
+    (add-todo-list #P"/home/me/cl/much-todo/much-todo.todo")
+
+    (#P"/home/me/cl/much-todo/test.todo"
+     #P"/home/me/cl/much-todo/much-todo.todo")
+
+_Select_ a todo list
+
+    ;(in-package much-todo) 
+    (select-todo-list)
+
+    Choose a todo list:
+    1. test
+    2. much-todo
+    1
+    first
+      sub of first
+        next of sub
+    second
+      sub of second
+
+    #<TODO "first" {10068808D3}>
+
+_Remove_ the todo lists (doesn't delete the files)
+
+    ;(in-package much-todo) 
+    (remove-todo-list t)
+
+    NIL
+
 Interface
 ---------
 
-(TODO &optional new-todo task) > function  
- Return the todo from *todo-pathname*, add the new-todo if present to the file.
+    (TODO &optional new-todo task) > function
+     Display and return todo from *todo-pathname*, if new-todo given add to the file.
+    
+    (FOCUS &optional string) > function
+     Move todo matching string to front of todo file, *todoing* <- next subtask.
+    
+    (FINISH) > function
+     Remove current task from the todo list, clear *todoing*.
+    
+    (UNFOCUS) > function
+     Clear *todoing*
+    
+    (ADD-TODO-LIST pathname) > function
+     Add todo list to the todos displayed by select-todo-list.
+    
+    (SELECT-TODO-LIST &optional number) > function
+     User-interactive choice between identified todo files.
 
-(FOCUS &optional string) > function  
- Move todo matching string to front of todo file, *todoing* <- next subtask.
-
-(FINISH) > function  
- Clear *todoing*, remove the most recent task.
-Fixme: doesn't insure that the task named in *todoing* is still the most 
-recent task.
-
-(UNFOCUS) > function  
- Clear *todoing*
-
-*todoing* > variable  
- The task in progress
-
-*todo-pathname* > variable  
- Path of the file to persist the todo.
-
+    (REMOVE-TODO-LIST &optional number-or-all) > function
+     Remove todo list from todos displayed by select-todo-list.
+    
+    *todos* > variable
+     List of pathnames of todo files.
+    
+    *todo-pathname* > variable
+     Path of the file to persist the current todo list.
+    
+    *todoing* > variable
+     The task in progress
+    
 Representation of the todo file
 -------------------------------
 
