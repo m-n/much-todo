@@ -84,7 +84,6 @@ _Finish (remove)_ a task
     Second Task
 
     #<TODO "Third Task" {10092C9BE3}>
-    ;(in-package much-todo) 
     
 _Add_ a todo list
 
@@ -162,7 +161,7 @@ slime-repl integration
 
 The following function is adjusted from the slime sources. It is an elisp
 function which determines the display of slime's prompt. If you replace slime's
-version of this version of the function and push :much-todo to *features* in 
+version with this version of the function and push :much-todo to *features* in 
 your lisp image, the slime prompt will display as in the example above.
 
 Known Issue: Occasionally this seems to be hanging my prompt, requiring a
