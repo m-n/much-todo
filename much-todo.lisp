@@ -56,10 +56,8 @@
 
 (defmacro with-todo (var &body body)
   `(if *todo-pathname*
-       (with-standard-io-syntax
-	 (let ((*print-readably* t))
-	   (with-file-datastructure (,var *todo-pathname* :read-function 'todo-reader)
-	     ,@body)))
+       (with-file-datastructure (,var *todo-pathname* :read-function 'todo-reader)
+	 ,@body)
        (format t "No todo file selected.")))
 
 (defclass-autoargs todo ()

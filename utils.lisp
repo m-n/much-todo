@@ -22,7 +22,7 @@
 	      (setq ,read-win t)
 	      (setq ,backup (read-file-into-string ,gpathname))
 	      (alexandria:with-output-to-file (,stream ,gpathname :if-exists :supersede)
-		(write ,symbol :stream ,stream)
+		(with-standard-io-syntax (write ,symbol :stream ,stream))
 		(finish-output ,stream)
 		(setq ,write-win t)))
 	 (unless (and ,write-win ,read-win)
