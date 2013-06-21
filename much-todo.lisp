@@ -69,25 +69,26 @@
 
 (defun todo (&optional new-todo task)
   "Display and return todo from *todo-pathname*, if new-todo given add to the file."
-  (with-todo todo
-    (cond ((and new-todo task)
-	   (destructuring-bind (at prev first) (car (locate task todo))
-	     (declare (ignorable prev first))
-	     (if at
-		 (setf (subtask at) (apply 'make-instance 'todo
-					   :task new-todo
-					   (when (subtask at)
-					     (list
-					      :next (subtask at)))))
-		 (format t "~&Task not found -- todo not added.~&"))))
-	  (new-todo
-	   (setf todo (make-instance 'todo :task new-todo :next todo)))
-	  (t
-	   nil)))
-  (when *todoing* (focus *todoing*))
-  (with-todo todo
-    (display-todo todo)
-    todo))
+  (let (found)
+    (with-todo todo
+      (when task (or (setq found (locate task todo))))
+      (cond ((and new-todo task found)
+	     (destructuring-bind (at prev first) (car found)
+	       (declare (ignorable prev first))
+	       (setf (subtask at) (apply 'make-instance 'todo
+					 :task new-todo
+					 (when (subtask at)
+					   (list
+					    :next (subtask at)))))))
+	    ((and new-todo (not task))
+	     (setf todo (make-instance 'todo :task new-todo :next todo)))))
+    (cond ((not found)
+	   (format t "~&Task \"~A\" not found -- todo not added.~&" task)
+	   (with-todo todo todo))
+	  (t (when *todoing* (focus *todoing*))
+	     (with-todo todo
+	       (display-todo todo)
+	       todo)))))
 
 
 (defun focus (&optional string)
