@@ -123,10 +123,12 @@
       (format t "~&~A. ~A~&" (1+ i) (pathname-name todo)))
     (force-output)
     (setq number (read)))
-  (decf number) ; todos indexed from 1
-  (if-let (path (nth number *todos*))
+  (if-let (path (when (and (numberp number) (plusp number))
+		  ;; todos indexed from 1
+		  (decf number)
+		  (nth number *todos*)))
     (progn (setq *todo-pathname* path) (todo))
-    (error "Option not found.")))
+    (format t "Option ~A is not a number designating one of the todos." number)))
 
 (defun remove-todo-list (&optional number-or-all)
   "Remove todo list from todos displayed by select-todo-list."
