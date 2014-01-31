@@ -92,12 +92,19 @@
 
 
 (defun focus (&optional string)
-  "Move todo matching string to front of todo file, *todoing* <- next subtask."
+  "Move todo matching string to front of todo file, *todoing* <- next subtask.
+
+If there is no matching string it will add a new task."
   (unless string (setq string ""))
-  (with-todo todo
-    (when-let ((ordered-todo (nmove-to-front string todo)))
-      (setq todo ordered-todo)
-      (setq *todoing* (next-task todo)))))
+  (let (foundp)
+    (with-todo todo
+      (when-let ((ordered-todo (nmove-to-front string todo)))
+        (setq foundp t)
+        (setq todo ordered-todo)
+        (setq *todoing* (next-task todo))))
+    (unless foundp
+      (todo string)
+      (focus string))))
 
 (defun unfocus ()
   "Clear *todoing*"

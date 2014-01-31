@@ -28,7 +28,8 @@
 	 (unless (and ,write-win ,read-win)
 	   (when ,read-win
 	     (write-string-into-file ,backup ,gpathname :if-exists :supersede))
-	   (error "with-file-datastructure failed to write to ~A" ,gpathname))))))
+	   (error "with-file-datastructure failed to ~:[write~;read~] to ~A"
+                  ,write-win ,gpathname))))))
 
 (defmacro prog1-let ((var val) &body body)
   `(let ((,var ,val))

@@ -125,7 +125,8 @@ Interface
     
     (FOCUS &optional string) > function
      Move todo matching string to front of todo file, *todoing* <- next subtask.
-    
+     If there is no matching string it will add a new task.
+
     (FINISH) > function
      Remove current task from the todo list, clear *todoing*.
     
