@@ -160,20 +160,15 @@ spaces more than the previous line, it is a subtask of the previous line.
 slime-repl integration
 ----------------------
 
-The following function is adjusted from the slime sources. It is an elisp
-function which determines the display of slime's prompt. If you replace slime's
-version with this version of the function and push :much-todo to *features* in 
-your lisp image, the slime prompt will display as in the example above.
+The following function is adjusted from the slime sources. It is an
+elisp function which determines the display of slime's prompt. If you
+replace slime's version with this version of the function, the slime
+prompt will display as in the example above.
 
 Known Issue: Occasionally this seems to be hanging my prompt, requiring a
 C-c C-c or C-g C-g to unhang it.
 
     (defun slime-repl-insert-prompt ()
-      "Insert the prompt (before markers!).
-    Set point after the prompt.
-    Return the position of the prompt beginning.
-        
-        If `slime-repl-suppress-prompt' is true, does nothing and returns nil."
       (goto-char slime-repl-input-start-mark)
       (if slime-repl-suppress-prompt
           (unless (bolp) (insert-before-markers "\n"))
@@ -181,12 +176,17 @@ C-c C-c or C-g C-g to unhang it.
           (slime-save-marker slime-output-end
             (unless (bolp) (insert-before-markers "\n"))
             (let ((prompt-start (point))
-                  (prompt  (downcase (format ";(in-package %s) %s\n"
-                                             (slime-lisp-package-prompt-string)
-                                             (slime-eval
-                                              '(cl:eval (cl:read-from-string
-                                                         "(cl:or #+much-todo much-todo::*todoing*
-                                                                   \"\")")))))))
+                  (prompt (format ";(in-package %s) %s\n"
+                                  (downcase (slime-lisp-package-prompt-string))
+                                  (slime-eval
+                                   '(cl:eval (cl:read-from-string
+                                              "(cl:or (cl:and
+                                                        (cl:find-package \"MUCH-TODO\")
+                                                        (cl:symbol-value
+                                                          (cl:find-symbol
+                                                            \"*TODOING*\"
+                                                            \"MUCH-TODO\")))
+                                                      (cl:make-string 0))"))))))
               (slime-propertize-region
                   '(face slime-repl-prompt-face read-only t intangible t
                          slime-repl-prompt t
