@@ -3,15 +3,18 @@
 (in-package #:much-todo)
 
 (defmacro with-file-datastructure
-    ((symbol pathname &key (readtable '*readtable*)
-			   (read-function ())
-		      &allow-other-keys)
+    ((symbol pathname &key
+             (readtable '*readtable*)
+             (read-function ())
+             (write-nil-p ())
+             &allow-other-keys)
      &body body)
-  (with-gensyms (write-win read-win stream gpathname gread-function backup)
+  (with-gensyms (write-win read-win stream gpathname gread-function backup write-nil)
     `(let ((*readtable* ,readtable)
-	   (,gpathname ,pathname)
-	   (,gread-function ,read-function)
-	   ,symbol ,backup ,write-win ,read-win)
+           (,gpathname ,pathname)
+           (,gread-function ,read-function)
+           (,write-nil ,write-nil-p)
+           ,symbol ,backup ,write-win ,read-win)
        (unwind-protect
 	    (prog1 
 		(alexandria:with-input-from-file (,stream ,gpathname)
@@ -22,8 +25,10 @@
 	      (setq ,read-win t)
 	      (setq ,backup (read-file-into-string ,gpathname))
 	      (alexandria:with-output-to-file (,stream ,gpathname :if-exists :supersede)
-		(with-standard-io-syntax (write ,symbol :stream ,stream))
-		(finish-output ,stream)
+		(with-standard-io-syntax
+                  (when (or ,write-nil ,symbol)
+                    (write ,symbol :stream ,stream)))
+                (finish-output ,stream)
 		(setq ,write-win t)))
 	 (unless (and ,write-win ,read-win)
 	   (when ,read-win
