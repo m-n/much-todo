@@ -134,7 +134,9 @@ If there is no matching string it will add a new task."
 		  ;; todos indexed from 1
 		  (decf number)
 		  (nth number *todos*)))
-    (progn (setq *todo-pathname* path) (todo))
+    (progn (setq *todo-pathname* path)
+           (unfocus)
+           (todo))
     (format t "Option ~A is not a number designating one of the todos." number)))
 
 (defun remove-todo-list (&optional number-or-all)
